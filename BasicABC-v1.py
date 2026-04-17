@@ -216,7 +216,7 @@ def main():
                            label=f'Mean: {mean_val:.3f}')
                 
                 ci_low, ci_high = post_cis[i]
-                ax.axvline(ci_low, color='black', linestyle='--', linewidth=1.2, alpha=0.8, label='95% CI')
+                ax.axvline(ci_low, color='black', linestyle='--', linewidth=1.2, alpha=0.8, label=f'95% CI: ({ci_low:.3f}, {ci_high:.3f})')
                 ax.axvline(ci_high, color='black', linestyle='--', linewidth=1.2, alpha=0.8)
                 
                 # Visual guide for prior bounds
