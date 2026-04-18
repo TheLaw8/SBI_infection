@@ -45,37 +45,87 @@ def load_observed_data():
 
 def compute_summary_statistics(infected, rewires, degrees):
     """
-    Computes a vector of summary statistics for the data.
+    Computes an optimised 4-dimensional vector of summary statistics.
+    
+    This specific combination of statistics was chosen to break the structural 
+    unidentifiability between beta (transmission) and rho (rewiring) while 
+    extracting a clean signal for gamma (recovery) and avoiding the stochastic 
+    noise inherent in small (N=200) random graphs.
     
     Parameters
     ----------
     infected : np.ndarray, shape (N, 201)
+        Fraction of infected nodes at each time step.
     rewires  : np.ndarray, shape (N, 201)
+        Count of successful rewiring events at each time step.
     degrees  : np.ndarray, shape (N, 31)
+        Histogram of final degrees (counts per bin 0-30).
     
     Returns
     -------
-    stats : np.ndarray, shape (N, 4)
-        The computed summary statistics:[max_infection, total_infection, total_rewires, mean_degree]
+    stats : np.ndarray, shape (N, 4)[max_inf, sum_inf, max_rew, gini_deg]
     """
 
-    # 1. Peak infection fraction
+    # =================================================================
+    # 1. PEAK INFECTION FRACTION (Main target: Beta, paritally Rho)
+    # =================================================================
+    # Purpose: Captures the maximum severity (the "height") of the epidemic.
+    # Contribution: This is the primary signal for \beta. A highly infectious 
+    # disease will produce a massive peak, while a weak disease will stay low.
+    # Note: It is partially coupled with \rho, as a high rho (lots of social 
+    # distancing) can also suppress the peak.
     max_inf = np.max(infected, axis=1)
     
-    # 2. Total infection burden
+    # =================================================================
+    # 2. TOTAL INFECTION BURDEN (Main target: Gamma)
+    # =================================================================
+    # Purpose: Calculates the area under the infection curve (total infected-days).
+    # Contribution: This is the definitive signal for \gamma. Because \gamma 
+    # dictates the duration of an infection (1/\gamma), it strictly controls 
+    # how long the epidemic lingers. A low \gamma means infections last longer, 
+    # directly inflating this sum regardless of network topology.
     sum_inf = np.sum(infected, axis=1)
     
-    # 3. Total number of rewiring events
-    sum_rew = np.sum(rewires, axis=1)
+    # =================================================================
+    # 3. PEAK REWIRING INTENSITY (Main target: Rho)
+    # =================================================================
+    # Purpose: Measures the maximum 'avoidance' response in a single time step.
+    # Contribution: This heavily targets \rho and decouples it from \beta. 
+    # While total rewiring might look similar for a fast/short epidemic and a 
+    # slow/long epidemic, a high \rho typically leads to a large spike 
+    # in rewiring events which max_rew captures.
+    max_rew = np.max(rewires, axis=1)
     
-    # 4. Mean final degree of the network
-    # We multiply the bin index (0 to 30) by the counts in that bin
+    # =================================================================
+    # 4. DEGREE GINI COEFFICIENT (Main target: Rho / Structural Inequality)
+    # =================================================================
+    # Purpose: Measures how unequal the final degree distribution is.
+    # Contribution: A standard Erdős-Rényi graph has low inequality (low Gini). 
+    # As \rho increases, susceptible nodes flee infected neighbors, creating 
+    # isolated infected nodes (low degree) and highly connected safe hubs 
+    # (high degree). The Gini coefficient captures this structural inequality.
+    
+    n_nodes = 200
     bins = np.arange(31)
-    total_nodes = np.sum(degrees, axis=1) # Always 200, but good to be robust
-    mean_deg = np.sum(degrees * bins, axis=1) / total_nodes
     
-    # Stack them horizontally into an (N, 4) matrix
-    return np.column_stack([max_inf, sum_inf, sum_rew, mean_deg])
+    # Total edges and mean degree for each simulation
+    total_k = np.sum(degrees * bins, axis=1)
+    mean_k = total_k / n_nodes
+    
+    # Matrix of absolute differences between all pairs of degree bins: |i - j|
+    bin_diffs = np.abs(bins[:, None] - bins[None, :])
+    
+    # Calculate the Gini numerator: sum_{i,j} (count_i * count_j * |bin_i - bin_j|)
+    # We use vectorized matrix multiplication (np.dot) to do this instantly for all simulations.
+    count_prod_diff = np.sum(np.dot(degrees, bin_diffs) * degrees, axis=1)
+    
+    # Final Gini formula: Numerator / (2 * N^2 * mean)
+    # We add 1e-6 to the denominator to prevent division by zero in edge cases.
+    gini_deg = count_prod_diff / (2 * (n_nodes**2) * mean_k + 1e-6)
+
+    # Return summary statistics
+    return np.column_stack([max_inf, sum_inf, max_rew, gini_deg])
+
 
 
 def main():
