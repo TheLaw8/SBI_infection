@@ -80,7 +80,7 @@ def compute_summary_statistics(infected, rewires, degrees):
     # 2. TOTAL INFECTION BURDEN (Main target: Gamma)
     # =================================================================
     # Purpose: Calculates the area under the infection curve (total infected-days).
-    # Contribution: This is the definitive signal for \gamma. Because \gamma 
+    # Contribution: This is an effective signal for \gamma. Because \gamma 
     # dictates the duration of an infection (1/\gamma), it strictly controls 
     # how long the epidemic lingers. A low \gamma means infections last longer, 
     # directly inflating this sum regardless of network topology.
@@ -114,7 +114,8 @@ def compute_summary_statistics(infected, rewires, degrees):
     
     # Matrix of absolute differences between all pairs of degree bins: |i - j|
     bin_diffs = np.abs(bins[:, None] - bins[None, :])
-    
+
+    # For formula see: https://en.wikipedia.org/wiki/Gini_coefficient#:~:text=%2C%20the-,Gini%20coefficient%20is,-%3A
     # Calculate the Gini numerator: sum_{i,j} (count_i * count_j * |bin_i - bin_j|)
     # We use vectorized matrix multiplication (np.dot) to do this instantly for all simulations.
     count_prod_diff = np.sum(np.dot(degrees, bin_diffs) * degrees, axis=1)
