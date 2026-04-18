@@ -70,9 +70,9 @@ def compute_summary_statistics(infected, rewires, degrees):
     # 1. PEAK INFECTION FRACTION (Main target: Beta, paritally Rho)
     # =================================================================
     # Purpose: Captures the maximum severity (the "height") of the epidemic.
-    # Contribution: This is the primary signal for \beta. A highly infectious 
+    # Contribution: This is the primary signal for beta. A highly infectious 
     # disease will produce a massive peak, while a weak disease will stay low.
-    # Note: It is partially coupled with \rho, as a high rho (lots of social 
+    # Note: It is partially coupled with rho, as a high rho (lots of social 
     # distancing) can also suppress the peak.
     max_inf = np.max(infected, axis=1)
     
@@ -80,9 +80,9 @@ def compute_summary_statistics(infected, rewires, degrees):
     # 2. TOTAL INFECTION BURDEN (Main target: Gamma)
     # =================================================================
     # Purpose: Calculates the area under the infection curve (total infected-days).
-    # Contribution: This is an effective signal for \gamma. Because \gamma 
-    # dictates the duration of an infection (1/\gamma), it strictly controls 
-    # how long the epidemic lingers. A low \gamma means infections last longer, 
+    # Contribution: This is an effective signal for gamma. Because gamma 
+    # dictates the duration of an infection (1/gamma), it strictly controls 
+    # how long the epidemic lingers. A low gamma means infections last longer, 
     # directly inflating this sum regardless of network topology.
     sum_inf = np.sum(infected, axis=1)
     
@@ -90,9 +90,9 @@ def compute_summary_statistics(infected, rewires, degrees):
     # 3. PEAK REWIRING INTENSITY (Main target: Rho)
     # =================================================================
     # Purpose: Measures the maximum 'avoidance' response in a single time step.
-    # Contribution: This heavily targets \rho and decouples it from \beta. 
+    # Contribution: This heavily targets rho and decouples it from beta. 
     # While total rewiring might look similar for a fast/short epidemic and a 
-    # slow/long epidemic, a high \rho typically leads to a large spike 
+    # slow/long epidemic, a high rho typically leads to a large spike 
     # in rewiring events which max_rew captures.
     max_rew = np.max(rewires, axis=1)
     
@@ -101,7 +101,7 @@ def compute_summary_statistics(infected, rewires, degrees):
     # =================================================================
     # Purpose: Measures how unequal the final degree distribution is.
     # Contribution: A standard Erdős-Rényi graph has low inequality (low Gini). 
-    # As \rho increases, susceptible nodes flee infected neighbors, creating 
+    # As rho increases, susceptible nodes flee infected neighbors, creating 
     # isolated infected nodes (low degree) and highly connected safe hubs 
     # (high degree). The Gini coefficient captures this structural inequality.
     
