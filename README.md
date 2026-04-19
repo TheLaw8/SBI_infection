@@ -3,7 +3,7 @@
 Code and data for the simulation-based inference (SBI) class assignment.
 Given a stochastic SIR epidemic model on an adaptive network, infer the unknown parameters $(\beta, \gamma, \rho)$ from observed data using SBI methods.
 
-Assignment by Lawrence Hider 
+Assignment by Lawrence Hider .
 
 ## READ THIS: How to run the code
 

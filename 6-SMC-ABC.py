@@ -1,13 +1,13 @@
 """
 Sequential Monte Carlo Approximate Bayesian Computation (SMC-ABC)
 
-This script implements the Adaptive SMC-ABC algorithm (Beaumont et al. 2009). It:
+This program implements the Adaptive SMC-ABC algorithm (Beaumont et al. 2009). It:
 1. Loads observed data and calculates the target statistics.
-2. Extracts the Mahalanobis covariance and final target epsilon from the reference table.
+2. Extracts the final target epsilon from the reference table.
 3. Initializes a Population of N=1000 particles at a very relaxed initial tolerance.
 4. Iteratively shrinks the tolerance, sampling and perturbing particles from the 
    previous generation until the entire population reaches the final target epsilon.
-5. Computes Beaumont weights to correct for the proposal bias.
+5. Computes weights to correct for the proposal bias.
 6. Plots the final approximate posterior.
 """
 
@@ -27,8 +27,8 @@ from simulator import simulate
 # =====================================================================
 REFERENCE_TABLE_PATH = "full_reference_table.npz"
 QUANTILES_TOLERANCE = 0.001  # Our final goal (Top 0.1% of 1M = 1000 particles)
+INITIAL_TOLERANCE = 0.05     # Start wide (Top 5%) so the population can evolve
 NUM_PARTICLES = 1000         # How many particles in our SMC population
-ALPHA_DROP = 0.5             # At each step, drop the tolerance to the median of the current pop
 
 
 def load_observed_data():
@@ -46,7 +46,8 @@ def load_observed_data():
 
 
 def compute_summary_statistics(infected, rewires, degrees):
-    """Computes the optimized 4-dimensional vector of summary statistics."""
+    """Computes the optimized 4-dimensional vector of summary statistics.
+       See other python files for a more detailed description of these summary stats. """
     max_inf = np.max(infected, axis=1)
     sum_inf = np.sum(infected, axis=1)
     max_rew = np.max(rewires, axis=1)
@@ -88,21 +89,26 @@ def main():
     diffs = sim_stats - target_stat 
     all_distances = np.sqrt(np.sum(np.dot(diffs, inv_mahala_cov) * diffs, axis=1))
     
-    # This is the exact finish line we are trying to cross
+    # This is the exact finish line (value of epsilon) we are trying to cross (0.1%)
+    # We've seen this result, epsilon=0.323, in our previous algorithms :)
     FINAL_EPSILON = np.quantile(all_distances, QUANTILES_TOLERANCE)
-    print(f"Target \u03b5 Threshold set to: {FINAL_EPSILON:.4f}\n")
+    print(f"Target Final \u03b5 Threshold set to: {FINAL_EPSILON:.4f}\n")
     
     # -----------------------------------------------------------------
     # 2. SMC-ABC Generation 0 (Initialization)
     # -----------------------------------------------------------------
-    print("--- Starting SMC-ABC Generation 0 ---")
+    print(f"--- Starting SMC-ABC Generation 0 (Top {INITIAL_TOLERANCE*100}% Prior) ---")
     prior_bounds = [(0.05, 0.50), (0.02, 0.20), (0.0, 0.8)]
+    rng = np.random.default_rng(42)
     
-    # We cheat slightly to save time: Instead of running new simulations for Gen 0, 
-    # we just take the top 1000 best simulations from your existing prior reference table!
-    # This gives the SMC an immediate, massive head start.
-    sorted_indices = np.argsort(all_distances)
-    best_indices_gen0 = sorted_indices[:NUM_PARTICLES]
+    # We initialize the population using a much wider, looser tolerance (e.g., 5%)
+    # This gives the SMC algorithm room to actually evolve and shrink the threshold.
+    init_threshold = np.quantile(all_distances, INITIAL_TOLERANCE)
+    valid_init_mask = all_distances <= init_threshold
+    valid_init_indices = np.where(valid_init_mask)[0]
+    
+    # Randomly pick 1000 particles from this wider pool
+    best_indices_gen0 = rng.choice(valid_init_indices, size=NUM_PARTICLES, replace=False)
     
     current_particles = np.column_stack([
         data["betas"][best_indices_gen0], 
@@ -117,8 +123,6 @@ def main():
     # Set the tolerance for the NEXT generation (median of current pop)
     eps_t = np.median(current_distances)
     t = 1
-    
-    rng = np.random.default_rng(42)
     
     # -----------------------------------------------------------------
     # 3. SMC-ABC Main Loop (Evolving the Populations)
@@ -176,8 +180,8 @@ def main():
                 new_particles[accepted_count] = theta_star
                 new_distances[accepted_count] = dist_star
                 
-                # Calculate Beaumont Weight: 1 / sum( W_prev * NormalPDF(theta_star | theta_prev, cov) )
-                # We exploit the symmetry of the Gaussian ( N(A|B) == N(B|A) ) so SciPy vectorizes it properly
+                # Calculate weight: 1 / sum( W_prev * NormalPDF(theta_star | theta_prev, cov) )
+                # We exploit the symmetry of the Gaussian ( N(A|B) == N(B|A) ) so SciPy vectorises it properly
                 kernel_probs = multivariate_normal.pdf(current_particles, mean=theta_star, cov=proposal_cov)
                 denominator = np.sum(current_weights * kernel_probs)
                 new_weights[accepted_count] = 1.0 / denominator
