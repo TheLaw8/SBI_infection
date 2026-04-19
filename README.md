@@ -1,7 +1,12 @@
 # SBI for Epidemic Parameter Inference on Adaptive Networks
 
-Companion code and data for the simulation-based inference (SBI) class assignment.
+Code and data for the simulation-based inference (SBI) class assignment.
 Given a stochastic SIR epidemic model on an adaptive network, infer the unknown parameters $(\beta, \gamma, \rho)$ from observed data using SBI methods.
+
+## AI Disclaimer 
+
+## IMPORTANT: How to run my code
+
 
 ## The model
 

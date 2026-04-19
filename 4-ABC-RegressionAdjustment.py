@@ -9,8 +9,8 @@ adjustment (Beaumont et al., 2002). It:
 4. Computes the summary statistics across all 1,000,000 simulations.
 5. Computes the Mahalanobis distance to appropriately handle correlated summary stats.
 6. Rejects all but the top 0.1% closest simulations.
-7. NEW ------> Applies Epanechnikov-weighted local linear regression to adjust accepted parameters.
-8. Plots the resulting approximate posterior.
+7. Applies Epanechnikov-weighted local linear regression to adjust accepted parameters.
+8. Plots the resulting approximate posteriors and diagnostics.
 """
 
 import os
@@ -131,7 +131,6 @@ def compute_summary_statistics(infected, rewires, degrees):
     return np.column_stack([max_inf, sum_inf, max_rew, gini_deg])
 
 
-
 def main():
     # -----------------------------------------------------------------
     # 1. Prepare Observed Statistics
@@ -168,7 +167,6 @@ def main():
     print("Computing covariance matrix and Mahalanobis distances...")
     
     # Step A: Compute the covariance matrix of the simulated summary statistics
-    # rowvar=False ensures it treats columns as variables
     cov_matrix = np.cov(sim_stats, rowvar=False)
 
     # Step B: Invert the covariance matrix
@@ -178,7 +176,6 @@ def main():
     diffs = sim_stats - target_stat 
     
     # Step D: Compute the Mahalanobis distance D = sqrt( diffs^T * inv_cov * diffs )
-    # We use np.dot and element-wise multiplication to vectorize this over all rows instantly
     distances = np.sqrt(np.sum(np.dot(diffs, inv_cov_matrix) * diffs, axis=1))
     
     # -----------------------------------------------------------------
@@ -199,8 +196,7 @@ def main():
     print(f"Distance Threshold (\u03b5): {threshold:.4f}\n")
     
     # -----------------------------------------------------------------
-    # NEW ------> 5. Regression Adjustment (Beaumont et al., 2002)
-    # See report for mathematical derivation of formulae used.
+    # 5. Regression Adjustment (Beaumont et al., 2002)
     # -----------------------------------------------------------------
     print("Applying Beaumont Regression Adjustment...")
     
@@ -228,7 +224,8 @@ def main():
         reg.fit(delta_S, param, sample_weight=weights)
         
         # Adjust the parameter: theta_adj = theta - (s - s_obs) * beta
-        param_adj = param - reg.predict(delta_S) + reg.intercept_ # Note: intercept here cancels out with the intercept subtracted through `reg.predict()` function
+        # Note: intercept here cancels out with the intercept subtracted through `reg.predict()` function
+        param_adj = param - reg.predict(delta_S) + reg.intercept_ 
         
         # Ensure the linear adjustment doesn't push values outside prior bounds
         param_adj = np.clip(param_adj, prior_bounds[i][0], prior_bounds[i][1])
@@ -243,23 +240,18 @@ def main():
     print(f"  Rho:   {np.mean(post_rhos):.4f} -> {np.mean(adj_rhos):.4f}\n")
     
     # -----------------------------------------------------------------
-    # 6. Plotting the Approximate Posterior & Diagnostics
+    # 6. Plotting Output (Generates ALL 3 plots)
     # -----------------------------------------------------------------
     print("Plotting posterior distributions and diagnostics...")
     
-    os.makedirs("./diagrams", exist_ok=True)  # Ensure the directory exists!
+    os.makedirs("./diagrams", exist_ok=True)
 
-    # Define labels and known prior bounds (from README)
     param_labels =[r"$\beta$ (Infection)", r"$\gamma$ (Recovery)", r"$\rho$ (Rewiring)"]
     prior_bounds =[(0.05, 0.50), (0.02, 0.20), (0.0, 0.8)]
     
-    # USE ADJUSTED PARAMS HERE so the charts display the new data
     post_params =[adj_betas, adj_gammas, adj_rhos]
-    
-    # all_params: The full prior samples (needed for the diagnostic cloud)
     all_params = [sim_betas, sim_gammas, sim_rhos]
-    
-    top_pct = QUANTILES_TOLERANCE * 100  # Format tolerance for title (e.g., 0.1)
+    top_pct = QUANTILES_TOLERANCE * 100 
     
     df_posterior = pd.DataFrame({
         param_labels[0]: adj_betas,
@@ -267,97 +259,108 @@ def main():
         param_labels[2]: adj_rhos
     })
     
-    # Calculate Posterior Means and 95% Credible Intervals (CI)
     post_means =[np.mean(p) for p in post_params]
     post_cis =[(np.percentile(p, 2.5), np.percentile(p, 97.5)) for p in post_params]
 
     # =================================================================
-    # FIGURE 1: PairPlot (The Main Posterior)
+    # PLOT 1: Standard PairPlot (Regression Adjusted Posteriors Only)
     # =================================================================
     sns.set_theme(style="white") 
-    g = sns.PairGrid(df_posterior, corner=True, diag_sharey=False)
+    g1 = sns.PairGrid(df_posterior, corner=True, diag_sharey=False)
     
-    # 1. Map the Diagonal (Histograms)
-    g.map_diag(sns.histplot, kde=True, color="steelblue", bins=30, edgecolor='white', alpha=0.7)
+    g1.map_diag(sns.histplot, kde=True, color="steelblue", bins=30, edgecolor='white', alpha=0.7)
+    g1.map_lower(sns.kdeplot, fill=True, cmap="Blues", alpha=0.7, levels=6)
+    g1.map_lower(sns.scatterplot, s=10, color=".2", alpha=0.15, linewidth=0)
     
-    # 2. Map the Lower Triangle (KDE and Scatter)
-    g.map_lower(sns.kdeplot, fill=True, cmap="Blues", alpha=0.7, levels=6)
-    g.map_lower(sns.scatterplot, s=10, color=".2", alpha=0.15, linewidth=0)
-    
-    # 3. Customize Axes (Loop through the grid)
     for i in range(len(param_labels)):
-        for j in range(i + 1):  # Iterate only over active subplots
-            ax = g.axes[i, j]
-            if ax is None:
-                continue
+        for j in range(i + 1):  
+            ax = g1.axes[i, j]
+            if ax is None: continue
             
-            # Force tick marks and labels on every single subplot for maximum readability
             ax.tick_params(labelbottom=True, labelleft=True, direction='out', length=4, width=1)
             ax.xaxis.set_major_locator(ticker.MaxNLocator(nbins=5))
             ax.yaxis.set_major_locator(ticker.MaxNLocator(nbins=5))
             
-            # Explicit axis labels for every subplot
             ax.set_xlabel(param_labels[j], fontsize=11, fontweight='bold')
             if i == j:
                 ax.set_ylabel("Density", fontsize=11, fontweight='bold')
-            else:
-                ax.set_ylabel(param_labels[i], fontsize=11, fontweight='bold')
-            
-            ax.grid(True, linestyle=':', alpha=0.6)
-            
-            # Enhancements for the Diagonal Marginal Plots
-            if i == j:
                 mean_val = post_means[i]
-                ax.axvline(mean_val, color='crimson', linestyle='-', linewidth=2, 
-                           label=f'Mean: {mean_val:.3f}')
-                
+                ax.axvline(mean_val, color='crimson', linestyle='-', linewidth=2, label=f'Mean: {mean_val:.3f}')
                 ci_low, ci_high = post_cis[i]
                 ax.axvline(ci_low, color='black', linestyle='--', linewidth=1.2, alpha=0.8, label=f'95% CI: ({ci_low:.3f}, {ci_high:.3f})')
                 ax.axvline(ci_high, color='black', linestyle='--', linewidth=1.2, alpha=0.8)
-                
-                # Visual guide for prior bounds
                 bound_low, bound_high = prior_bounds[i]
                 ax.axvspan(bound_low, bound_high, color='gray', alpha=0.08, label='Prior')
-                
                 ax.legend(loc='upper right', fontsize=7, frameon=True, facecolor='white')
-                
-            # Enhancements for Scatter Plots: Add Correlation Coefficients
             else:
+                ax.set_ylabel(param_labels[i], fontsize=11, fontweight='bold')
                 r = np.corrcoef(post_params[j], post_params[i])[0, 1]
-                ax.annotate(f"$r = {r:.2f}$", xy=(0.1, 0.9), xycoords='axes fraction', 
-                            ha='left', va='top', fontsize=11, fontweight='bold',
-                            bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="navy", alpha=0.7))
+                ax.annotate(f"$r = {r:.2f}$", xy=(0.1, 0.9), xycoords='axes fraction', ha='left', va='top', fontsize=11, fontweight='bold', bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="navy", alpha=0.7))
+            
+            ax.grid(True, linestyle=':', alpha=0.6)
 
-    g.fig.suptitle(f"Regression Adjusted ABC: Approximate Posteriors\n(Top {top_pct:g}% / Distance Threshold $\epsilon \leq {threshold:.3f}$)", 
-                   fontsize=16, fontweight='bold')
-    g.fig.subplots_adjust(top=0.88, hspace=0.3, wspace=0.3) # Increased spacing
-    
-    plt.savefig("./diagrams/posterior_pairplot_regression.png", dpi=300, bbox_inches='tight')
+    g1.fig.suptitle(f"Regression Adjusted ABC: Approximate Posteriors\n(Top {top_pct:g}% / Distance Threshold $\epsilon \leq {threshold:.3f}$)", fontsize=16, fontweight='bold')
+    g1.fig.subplots_adjust(top=0.88, hspace=0.3, wspace=0.3)
+    plt.savefig("./diagrams/posterior_pairplot_regression_single.png", dpi=300, bbox_inches='tight')
     plt.show()
 
     # =================================================================
-    # FIGURE 2: ABC Diagnostics (Distance vs. Parameters)
+    # PLOT 2: Comparative PairPlot (Rejection vs Regression Adjusted)
+    # =================================================================
+    df_rej = pd.DataFrame({
+        param_labels[0]: post_betas, param_labels[1]: post_gammas, param_labels[2]: post_rhos, "Method": "Basic Rejection"
+    })
+    df_adj = pd.DataFrame({
+        param_labels[0]: adj_betas, param_labels[1]: adj_gammas, param_labels[2]: adj_rhos, "Method": "Regression Adjusted"
+    })
+    df_combined = pd.concat([df_rej, df_adj], ignore_index=True)
+
+    g2 = sns.PairGrid(df_combined, hue="Method", palette=["#95a5a6", "#e74c3c"], corner=True, diag_sharey=False)
+    g2.map_diag(sns.kdeplot, fill=True, common_norm=False, alpha=0.5, linewidth=2)
+    g2.map_lower(sns.kdeplot, alpha=0.7, levels=4)
+    
+    for i in range(len(param_labels)):
+        for j in range(i + 1):  
+            ax = g2.axes[i, j]
+            if ax is None: continue
+            
+            ax.tick_params(labelbottom=True, labelleft=True, direction='out', length=4, width=1)
+            ax.xaxis.set_major_locator(ticker.MaxNLocator(nbins=5))
+            ax.yaxis.set_major_locator(ticker.MaxNLocator(nbins=5))
+            
+            ax.set_xlabel(param_labels[j], fontsize=11, fontweight='bold')
+            if i == j: 
+                ax.set_ylabel("Density", fontsize=11, fontweight='bold')
+                bound_low, bound_high = prior_bounds[i]
+                ax.axvspan(bound_low, bound_high, color='gray', alpha=0.08, label='Prior')
+            else: 
+                ax.set_ylabel(param_labels[i], fontsize=11, fontweight='bold')
+                
+            ax.grid(True, linestyle=':', alpha=0.6)
+
+    g2.add_legend(title="Inference Method", bbox_to_anchor=(0.8, 0.8), fontsize=10)
+    g2.fig.suptitle(f"ABC Posterior Comparison: Rejection vs Regression Adjustment\n(Tolerance: {top_pct:g}%)", fontsize=16, fontweight='bold')
+    g2.fig.subplots_adjust(top=0.90, hspace=0.3, wspace=0.3)
+    plt.savefig("./diagrams/posterior_comparison_regression.png", dpi=300, bbox_inches='tight')
+    plt.show()
+
+    # =================================================================
+    # PLOT 3: ABC Diagnostics (Distance vs. Parameters)
     # =================================================================
     fig, axes = plt.subplots(1, 3, figsize=(16, 5), sharey=True)
     
-    # Subset 20,000 random prior samples for the "cloud" so the plot isn't sluggish
     num_cloud = min(20000, len(sim_betas))
     idx_subset = np.random.choice(len(sim_betas), num_cloud, replace=False)
-    
-    # Cap the Y-axis at the 95th percentile to focus on the 'funnel' area
     max_dist_plot = np.percentile(distances, 95)
     
     for i, ax in enumerate(axes):
-        # 1. Plot the "Cloud" of all prior simulations (Rejected points)
-        ax.scatter(all_params[i][idx_subset], distances[idx_subset], 
-                   c='gray', s=4, alpha=0.1, label='Rejected Samples')
+        # Plot the "Cloud" of all prior simulations (Rejected points)
+        ax.scatter(all_params[i][idx_subset], distances[idx_subset], c='gray', s=4, alpha=0.1, label='Rejected Samples')
         
-        # 2. Highlight the "Accepted" points in red (using ADJUSTED points so you can see the shift)
-        ax.scatter(post_params[i], distances[accepted_mask], 
-                   c='crimson', s=12, alpha=0.6, edgecolor='white', linewidth=0.2, 
-                   label=f'Accepted ($d \leq \epsilon$)')
+        # Highlight the "Accepted" points in red (using ADJUSTED points so you can see the shift)
+        ax.scatter(post_params[i], distances[accepted_mask], c='crimson', s=12, alpha=0.6, edgecolor='white', linewidth=0.2, label=f'Accepted ($d \leq \epsilon$)')
         
-        # 3. Draw the threshold line
+        # Draw the threshold line
         ax.axhline(threshold, color='black', linestyle='--', linewidth=1.5)
         
         ax.set_ylim(0, max_dist_plot)
@@ -371,12 +374,10 @@ def main():
             ax.set_ylabel("Mahalanobis Distance ($D_M$)", fontsize=12, fontweight='bold')
             ax.legend(loc='upper right', fontsize=9, frameon=True)
 
-    fig.suptitle(f"ABC Diagnostics: Parameter Convergence (Tolerance: {top_pct:g}%)", 
-                 fontsize=16, fontweight='bold')
+    fig.suptitle(f"ABC Diagnostics: Parameter Convergence (Tolerance: {top_pct:g}%)", fontsize=16, fontweight='bold')
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.savefig("./diagrams/abc_diagnostics_regression.png", dpi=300, bbox_inches='tight')
     plt.show()
-
 
 if __name__ == "__main__":
     main()
