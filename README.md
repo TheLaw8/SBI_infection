@@ -3,10 +3,21 @@
 Code and data for the simulation-based inference (SBI) class assignment.
 Given a stochastic SIR epidemic model on an adaptive network, infer the unknown parameters $(\beta, \gamma, \rho)$ from observed data using SBI methods.
 
+Assignment by Lawrence Hider 
+
+## READ THIS: How to run the code
+
+First, you must run `0-build-reference-table.py` to build a reference table so we won't need to re-simulate every single time we run a new python program. This file builds the reference table in chunks, stored in a newly created folder called `temp_chunks`. These chunks will then be combined into a full reference table (used in subsequent programs) called `full_reference_table.npz`. 
+
+Then, simply run all of the python programs in order, starting from `1-BasicABC-Euclidean-Original.py` to `6-SMC-ABC.py`. All diagrams will be saved into the `diagrams` folder. Note that I have already pre-generated these diagrams and they already exist within this folder. 
+
+Next, note that the `papers` folder contains the papers I used when researching the advanced methodlogies. These papers have also been annotated with some of my own notes. 
+
+Finally, the `data` folder contains data from the original observations, and `simulator.py` is used to run the actual simulation of the model.
+
+
 ## AI Disclaimer 
-
-## IMPORTANT: How to run my code
-
+AI (Gemini) was used in this repository to help me draft and debug the code. I am responsible for the content and quality of the submitted work. The ideas behind the code are all my own and based on my own research, and I fully understand all the code submitted.
 
 ## The model
 
