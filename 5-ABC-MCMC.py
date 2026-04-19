@@ -256,7 +256,7 @@ def main():
     # Using comma formatting for larger numbers in the title
     fig.suptitle(f"ABC-MCMC Trace Plots ({NUM_MCMC_STEPS:,} Steps)", fontsize=16, fontweight='bold')
     plt.tight_layout()
-    plt.savefig("./diagrams/mcmc_trace_plots.png", dpi=300, bbox_inches='tight')
+    plt.savefig("./diagrams/5a-traceplots-mcmc.png", dpi=300, bbox_inches='tight')
     plt.show()
 
     # -----------------------------------------------------------------
@@ -323,7 +323,7 @@ def main():
                    fontsize=16, fontweight='bold')
     g.fig.subplots_adjust(top=0.88, hspace=0.3, wspace=0.3) 
     
-    plt.savefig("./diagrams/posterior_pairplot_mcmc.png", dpi=300, bbox_inches='tight')
+    plt.savefig("./diagrams/5b-posterior-pairplot-mcmc.png", dpi=300, bbox_inches='tight')
     plt.show()
 
 if __name__ == "__main__":

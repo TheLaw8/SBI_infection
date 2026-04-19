@@ -238,7 +238,7 @@ def main():
                    fontsize=16, fontweight='bold')
     g.fig.subplots_adjust(top=0.88, hspace=0.3, wspace=0.3) # Increased spacing
     
-    plt.savefig("./diagrams/posterior_pairplot.png", dpi=300, bbox_inches='tight')
+    plt.savefig("./diagrams/2a-posterior-pairplot-mahalanobis.png", dpi=300, bbox_inches='tight')
     plt.show()
 
     # =================================================================
@@ -280,7 +280,7 @@ def main():
     fig.suptitle(f"ABC Diagnostics: Parameter Convergence (Tolerance: {top_pct:g}%)", 
                  fontsize=16, fontweight='bold')
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.savefig("./diagrams/abc_diagnostics.png", dpi=300, bbox_inches='tight')
+    plt.savefig("./diagrams/2b-distance-scatterplot-mahalanobis.png", dpi=300, bbox_inches='tight')
     plt.show()
 
 

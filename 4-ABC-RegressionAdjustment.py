@@ -301,7 +301,7 @@ def main():
 
     g1.fig.suptitle(f"Regression Adjusted ABC: Approximate Posteriors\n(Top {top_pct:g}% / Distance Threshold $\epsilon \leq {threshold:.3f}$)", fontsize=16, fontweight='bold')
     g1.fig.subplots_adjust(top=0.88, hspace=0.3, wspace=0.3)
-    plt.savefig("./diagrams/posterior_pairplot_regression_single.png", dpi=300, bbox_inches='tight')
+    plt.savefig("./diagrams/4a-posterior-pairplot-regression-single.png", dpi=300, bbox_inches='tight')
     plt.show()
 
     # =================================================================
@@ -341,7 +341,7 @@ def main():
     g2.add_legend(title="Inference Method", bbox_to_anchor=(0.8, 0.8), fontsize=10)
     g2.fig.suptitle(f"ABC Posterior Comparison: Rejection vs Regression Adjustment\n(Tolerance: {top_pct:g}%)", fontsize=16, fontweight='bold')
     g2.fig.subplots_adjust(top=0.90, hspace=0.3, wspace=0.3)
-    plt.savefig("./diagrams/posterior_comparison_regression.png", dpi=300, bbox_inches='tight')
+    plt.savefig("./diagrams/4b-posterior-pairplot-regression-comparison.png", dpi=300, bbox_inches='tight')
     plt.show()
 
     # =================================================================
@@ -376,7 +376,7 @@ def main():
 
     fig.suptitle(f"ABC Diagnostics: Parameter Convergence (Tolerance: {top_pct:g}%)", fontsize=16, fontweight='bold')
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.savefig("./diagrams/abc_diagnostics_regression.png", dpi=300, bbox_inches='tight')
+    plt.savefig("./diagrams/4c-distance-scatterplot-regression.png", dpi=300, bbox_inches='tight')
     plt.show()
 
 if __name__ == "__main__":

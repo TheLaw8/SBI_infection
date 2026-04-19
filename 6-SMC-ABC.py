@@ -276,7 +276,7 @@ def main():
                    fontsize=16, fontweight='bold')
     g.fig.subplots_adjust(top=0.88, hspace=0.3, wspace=0.3) 
     
-    plt.savefig("./diagrams/posterior_pairplot_smc.png", dpi=300, bbox_inches='tight')
+    plt.savefig("./diagrams/6a-posterior-pairplot-smc.png", dpi=300, bbox_inches='tight')
     plt.show()
 
 if __name__ == "__main__":
